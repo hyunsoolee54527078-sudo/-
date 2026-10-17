@@ -1,0 +1,27 @@
+{
+  "name": "BadApple-Part-Edition",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "$className": "ReplicatedStorage",
+      "BadAppleData": {
+        "$className": "Folder",
+        "$path": "roblox_export_48x60_20f"
+      },
+      "BadApplePlayback": {
+        "$className": "RemoteEvent"
+      }
+    },
+    "ServerScriptService": {
+      "$className": "ServerScriptService",
+      "$path": "roblox_scripts"
+    },
+    "StarterPlayer": {
+      "$className": "StarterPlayer",
+      "StarterPlayerScripts": {
+        "$className": "StarterPlayerScripts",
+        "$path": "roblox_client"
+      }
+    }
+  }
+}
