@@ -14,7 +14,7 @@
     },
     "ServerScriptService": {
       "$className": "ServerScriptService",
-      "$path": "roblox_scripts"
+      "$path": "roblox_export"
     },
     "StarterPlayer": {
       "$className": "StarterPlayer",
