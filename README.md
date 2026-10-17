@@ -122,3 +122,31 @@ The video is rendered using Roblox Parts, so performance depends on the number o
 ## Credits and rights
 
 **Bad Apple!!** is an existing copyrighted work. This repository is a fan-made technical project and is not affiliated with or endorsed by the original rights holders. Provide your own legally obtained source media and follow Roblox's rules and the rights holders' requirements when sharing or publishing your experience.
+
+## Use Your Own Video
+
+This project is not limited to Bad Apple!! You can use the source code to convert and play other videos as well!
+
+How to use another video
+
+1. Prepare a video file supported by your installed video-processing dependencies.
+
+2. Run the frame extraction script with your video file:
+   
+   python extract_frames.py your_video.mp4
+
+3. Convert the extracted frame data into Luau modules:
+   
+   python convert_to_luau.py --input output --output roblox_export
+
+4. Configure "default.project.json" to match your folder structure, then sync the project with Rojo.
+
+5. Run the project in Roblox Studio and adjust the playback settings if needed.
+
+Notes
+
+- You can experiment with different videos, resolutions, frame rates, and threshold values.
+- Higher resolutions and frame rates can significantly increase the amount of generated data and the workload on Roblox.
+- Make sure you have the necessary rights or permission to use the video you choose.
+- The scripts and configuration may need adjustments depending on your video and local setup.
+- Update the paths in default.project.json to match your local folder structure.
