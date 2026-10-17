@@ -1,153 +1,157 @@
-# Video frame extractor
+# BadApple-Part-Edition 🍎
 
-`extract_frames.py` samples a video by its source frame rate and duration, resizes each selected frame, converts it to grayscale, and thresholds it into binary pixels. Frames are processed one at a time and written as numbered JSON records split across multiple files.
+A fan-made **Bad Apple!!** player built in Roblox using Parts, Luau, Python, and Rojo.
+
+The project converts video frames into binary pixel data and displays them on a 48 × 60 grid of Roblox Parts. Playback starts only when a player presses **PLAY**.
+
+## Features
+
+- **48 × 60 pixel display** — 2,880 pixel Parts
+- **4,382 frames** at **20 FPS**
+- **PLAY button** to start playback manually
+- Python tools for extracting video frames and converting JSON data into Luau ModuleScripts
+- Split frame data across multiple Luau modules
+- Rojo integration for syncing local files with Roblox Studio
+
+## Built With
+
+- [Roblox Studio](https://create.roblox.com/) — game environment
+- [Luau](https://luau.org/) — playback and pixel rendering
+- [Python](https://www.python.org/) — frame extraction and data conversion
+- [OpenCV](https://opencv.org/) and [NumPy](https://numpy.org/) — image processing
+- [Rojo](https://rojo.space/) — local project synchronization
+- [Rokit](https://github.com/rojo-rbx/rokit) — toolchain management
+
+## Project Structure
+
+```text
+.
+├── default.project.json
+├── rokit.toml
+├── extract_frames.py
+├── convert_to_luau.py
+├── requirements.txt
+├── input/
+│   └── BadApple.mp4             # Supply your own source video
+├── output_48x60_分割/            # Extracted JSON frames (generated)
+├── roblox_export_48x60_20f/     # Generated Luau frame modules
+├── roblox_scripts/
+│   ├── BadAppleScreen.lua
+│   └── BadApplePlayer.server.lua
+└── roblox_client/
+    └── BadApplePlayButton.client.lua
+```
+
+Names shown above describe the expected/current project layout; adjust paths to match your local checkout if they differ.
 
 ## Requirements
 
-- Python 3.12.7 or newer (Python 3.13 and newer are also supported)
-- OpenCV and NumPy
+- Windows PowerShell examples below assume Python 3.12.7 or newer.
+- Python 3.12.7 or newer
+- Roblox Studio
+- Rojo 7.7.1 (pinned through Rokit in this project)
+- `opencv-python` and `numpy`
 
-Install the dependencies on Windows:
-
-```powershell
-py -m pip install opencv-python numpy
-```
-
-Or install the versions declared in `requirements.txt`:
+Install Python dependencies from the project root:
 
 ```powershell
-py -m pip install -r requirements.txt
+py -3.12 -m pip install -r requirements.txt
 ```
 
-## Run
+If you do not use `requirements.txt`, install the packages directly:
 
 ```powershell
-py extract_frames.py input/BadApple.mp4 --output output
+py -3.12 -m pip install opencv-python numpy
 ```
 
-The default output is 24 pixels wide by 30 pixels high, sampled at 20 FPS. For every output timestamp, the extractor selects the nearest source frame based on the video's reported FPS. For videos whose output FPS exceeds the source FPS, a source frame can be used more than once.
+## Generate the Frame Data
 
-## Command-line options
-
-| Option | Default | Description |
-| --- | --- | --- |
-| `video` | Required | Source video path |
-| `--output PATH` | `output` | Output directory |
-| `--width N` | `24` | Output pixel width |
-| `--height N` | `30` | Output pixel height |
-| `--fps N` | `20` | Output sampling rate |
-| `--threshold N` | `127` | Grayscale threshold from 0 to 255 |
-| `--frames-per-file N` | `500` | Maximum records in each JSON file |
-| `--preview` | Off | Save binary PNG previews under `output/previews` |
-
-For example, save previews and use a different sampling rate:
+Place your own source video at `input/BadApple.mp4`, then extract frames at 48 × 60 and 20 FPS:
 
 ```powershell
-py extract_frames.py input/BadApple.mp4 --output output --fps 20 --preview
+py -3.12 extract_frames.py input/BadApple.mp4 --output "output_48x60_분할" --width 48 --height 60 --fps 20
 ```
 
-## Output format
+The extractor writes binary pixel matrices to numbered JSON files and creates a `manifest.json` describing the output. Black and white pixels are represented by `0` and `1`.
 
-Each `frames_XXXXX.json` file contains a JSON array. Every entry has a zero-based output frame number and a matrix with `height` rows and `width` columns:
-
-```json
-[
-  {
-    "frame": 0,
-    "pixels": [
-      [0, 1, 0]
-    ]
-  }
-]
-```
-
-The example matrix is abbreviated; the default matrix has 30 rows and 24 values per row. Black pixels are `0`; white pixels are `1`. `manifest.json` records source video metadata, extraction settings, the extracted frame count, and the generated JSON filenames.
-
-The program validates the Python version before opening the video, reports progress while decoding, handles invalid paths and decoding/writing errors, and reopens the JSON files to verify the frame numbering and pixel dimensions before writing the manifest. It does not overwrite an existing `manifest.json` or `frames_XXXXX.json`; choose a new output folder if these files already exist.
-
-If decoding stops before the frame count reported by the video, successfully decoded frames are still sampled and saved. The manifest records the reported and decoded source frame counts, actual extracted frame count, output FPS and resolution, decoded duration, partial-decoding status, decoder status, JSON validation status, and any warnings. OpenCV reports a failed `VideoCapture.read()` as no frame; it does not always distinguish an early end-of-stream from a decoding error. Exceptions raised by the decoder are recorded separately as `decoder_error`.
-
-## JSON frames to Luau ModuleScripts
-
-`convert_to_luau.py` converts `manifest.json` and the `frames_XXXXX.json` files into Luau modules. It validates the manifest, consecutive frame indices, pixel matrix dimensions, and binary pixel values before writing. No additional Python packages are required.
+Convert the extracted JSON into Luau ModuleScripts, with 20 frames per module:
 
 ```powershell
-py -3.12 convert_to_luau.py --input output --output roblox_export
+py -3.12 convert_to_luau.py --input "output_48x60_분할" --output "roblox_export_48x60_20f" --frames-per-file 20
 ```
 
-The converter defaults to 500 frames per module and reads the FPS from `manifest.json`. These options are also available:
+For 4,382 frames, this produces 220 frame modules plus `Manifest.lua`. The last module contains the remaining frames. The converter reads the dimensions, FPS, frame count, module names, and frame ranges from the generated manifest.
 
-```powershell
-py -3.12 convert_to_luau.py --input output --output roblox_export --frames-per-file 250 --fps 20
-py -3.12 convert_to_luau.py --input output --output roblox_export --force
-```
+> **Tip:** Use a new output folder when regenerating data. The scripts intentionally avoid overwriting existing generated files unless the converter is explicitly run with `--force`.
 
-`--force` explicitly allows replacing generated `Frames_XXX.lua` and `Manifest.lua` files in the destination. Without it, a collision is reported and existing files are left untouched. The generated `Manifest.lua` contains the output dimensions, pixels per frame, FPS, total frame count, module filenames, and frame ranges.
+## Set Up Rojo
 
-To use the files in Roblox Studio, create a `ModuleScript` for each generated `.lua` file in Explorer, open it, and paste in the corresponding file contents. Keep each script's name aligned with the generated module filename (without `.lua`) so that the module list in `Manifest.lua` can be used to locate the frame modules. The converter only generates data modules; it does not create playback or Part-generation scripts.
+This project pins Rojo 7.7.1 using `rokit.toml`.
 
-Run the converter tests and syntax check with:
-
-```powershell
-py -3.12 -m unittest test_convert_to_luau.py
-py -3.12 -m py_compile convert_to_luau.py
-```
-
-## Roblox Studio playback
-
-Rojo maps `roblox_export_48x60_20f/` to `ReplicatedStorage.BadAppleData`, `roblox_scripts/` to `ServerScriptService`, and `roblox_client/` to `StarterPlayer.StarterPlayerScripts`. `ReplicatedStorage.BadApplePlayback` is a `RemoteEvent` declared in `default.project.json`.
-
-The generated data manifest describes 48×60 (2880 pixels), 4382 frames at 20 FPS, split into 220 frame modules with 20 frames per module. The server reads `modules` and `ranges` from `Manifest.lua` and loads them in order; it does not depend on a hard-coded module count.
-
-The server validates and loads the data at startup and prepares the screen on frame 0, but it does not advance frames automatically. Each player sees a `PLAY` button created by `BadApplePlayButton.client.lua`. Clicking it sends a `Start` request to the server. A single server-side playback guard ensures repeated clicks cannot create additional Heartbeat connections; the same RemoteEvent also reports playback state to clients.
-
-To test in Roblox Studio:
-
-1. Run `rojo serve` from the project root and connect Studio using the Rojo plugin.
-2. Check that `ReplicatedStorage.BadAppleData` contains `Manifest` and all listed frame ModuleScripts, `ReplicatedStorage.BadApplePlayback` is a RemoteEvent, `ServerScriptService` contains `BadApplePlayer` and `BadAppleScreen`, and `StarterPlayer.StarterPlayerScripts` contains `BadApplePlayButton`.
-3. Press **Play**. The screen should remain on its first frame until a player clicks **PLAY**.
-4. Click **PLAY** and check Output for `Playback started` and frame/FPS/loaded-count messages. Clicks after playback starts should not create another playback loop. Joining during playback should show the button as `PLAYING`.
-
-The screen Part size, spacing, and placement remain configurable in `BadAppleScreen.lua`.
-
-## Rojo 자동 동기화 설정 (한국어)
-
-프로젝트 루트의 `default.project.json`은 Rojo 7 프로젝트 형식입니다. `roblox_export_48x60_20f/` 폴더 전체를 `ReplicatedStorage/BadAppleData`로 연결하므로 manifest의 `modules` 목록에 있는 모든 프레임 모듈이 동기화됩니다. `roblox_scripts/BadAppleScreen.lua`는 `ServerScriptService`의 ModuleScript, `BadApplePlayer.server.lua`는 같은 위치의 Script, `roblox_client/BadApplePlayButton.client.lua`는 `StarterPlayer.StarterPlayerScripts`의 LocalScript로 인식됩니다. 같은 project 설정에서 `ReplicatedStorage.BadApplePlayback` RemoteEvent도 생성됩니다.
-
-### 설치
-
-1. [Rokit 최신 릴리스](https://github.com/rojo-rbx/rokit/releases/latest)에서 Windows용 `rokit.exe`를 내려받아 실행하거나, PowerShell에서 Rokit 공식 설치 스크립트를 실행합니다.
-
-   ```powershell
-   Invoke-RestMethod https://raw.githubusercontent.com/rojo-rbx/rokit/main/scripts/install.ps1 | Invoke-Expression
-   ```
-
-2. 새 터미널을 열고 프로젝트 루트(`default.project.json`이 있는 폴더)에서 프로젝트에 고정된 Rojo 7.7.1을 설치합니다.
+1. Install [Rokit](https://github.com/rojo-rbx/rokit/releases/latest) using its official installation instructions.
+2. Open a terminal in the project root (the folder containing `default.project.json` and `rokit.toml`).
+3. Install the pinned tools:
 
    ```powershell
    rokit install
    rojo --version
    ```
 
-3. Roblox Studio 플러그인을 설치합니다.
+4. Install the Rojo Studio plugin if it is not already installed:
 
    ```powershell
    rojo plugin install
    ```
 
-   또는 [Roblox Creator Marketplace의 Rojo 플러그인](https://create.roblox.com/marketplace/asset/13916111004/Rojo)을 Studio에 설치합니다.
+   Alternatively, install the [Rojo plugin from Roblox Creator Marketplace](https://create.roblox.com/marketplace/asset/13916111004/Rojo).
 
-### Studio 연결 및 확인
+## Sync With Roblox Studio
 
-1. Roblox Studio에서 작업할 place를 엽니다.
-2. 프로젝트 루트에서 Rojo 서버를 시작합니다.
+1. Open the intended Roblox place in Studio.
+2. From the project root, start the Rojo server:
 
    ```powershell
    rojo serve
    ```
 
-3. Studio의 Rojo 플러그인을 열고 **Connect**를 눌러 로컬 Rojo 서버에 연결합니다. 처음 연결할 때 동기화 결과를 확인하고, 원하지 않는 place에 연결하지 않았는지 확인합니다.
-4. Explorer에서 `ReplicatedStorage > BadAppleData` 아래에 Manifest와 manifest에 나열된 프레임 ModuleScript가 모두 있는지 확인합니다. 현재 48×60 데이터는 `Frames_000`~`Frames_219`의 220개 파일입니다. 같은 서비스에 `BadApplePlayback` RemoteEvent가 있고, `ServerScriptService`에 `BadAppleScreen` ModuleScript와 `BadApplePlayer` Script, `StarterPlayer > StarterPlayerScripts`에 `BadApplePlayButton` LocalScript가 있는지 확인합니다.
-5. Studio에서 **Play**를 누르면 영상은 자동 재생되지 않으며 `PLAY` 버튼이 표시됩니다. 클릭 후 Output에 재생 시작과 현재 프레임, FPS, 로딩 프레임 수가 표시되는지 확인합니다. 여러 번 눌러도 재생 루프는 하나만 유지됩니다.
+3. Open the Rojo plugin in Studio and connect to the local server.
+4. In Explorer, verify that the project is mapped as follows:
 
-Rojo 동기화는 `roblox_export_48x60_20f/`, `roblox_scripts/`, `roblox_client/`의 파일과 프로젝트에 선언된 RemoteEvent를 Studio 인스턴스에 반영합니다. 출력 데이터를 다시 생성하거나 수정한 뒤에는 파일 저장을 확인하고 Studio Explorer의 동기화 결과를 확인하세요.
+   | Location | Expected contents |
+   | --- | --- |
+   | `ReplicatedStorage.BadAppleData` | `Manifest` and all frame ModuleScripts listed in the manifest |
+   | `ReplicatedStorage.BadApplePlayback` | `RemoteEvent` |
+   | `ServerScriptService` | `BadAppleScreen` ModuleScript and `BadApplePlayer` Script |
+   | `StarterPlayer.StarterPlayerScripts` | `BadApplePlayButton` LocalScript |
+
+The `default.project.json` file defines these mappings. Rojo syncs the data modules and scripts from the local folders; you do not need to paste each ModuleScript manually.
+
+## Play the Video
+
+1. In Roblox Studio, press **Play** to start the experience.
+2. The screen should display the first frame and wait without automatically playing the video.
+3. Click the on-screen **PLAY** button to begin playback.
+4. Check the Studio Output window for playback status and diagnostic messages.
+
+The server reads the module list and frame ranges from `Manifest.lua`, so playback should not depend on a hard-coded module count. Repeated PLAY requests are intended not to create additional playback loops.
+
+## Performance Notes
+
+The display uses 2,880 Parts. Performance varies by device; lower-powered or mobile devices may experience lag, increased battery use, or heating. Stop the test and let the device cool if it becomes uncomfortably hot.
+
+## Troubleshooting
+
+- **The PLAY button does not appear:** Confirm that `BadApplePlayButton` is under `StarterPlayer > StarterPlayerScripts` and check Output for errors.
+- **Clicking PLAY does nothing:** Confirm that `BadApplePlayback` exists as a `RemoteEvent` in `ReplicatedStorage` and that the server script is running.
+- **Frame modules are missing:** Check that the folder in `default.project.json` matches the generated output folder and that Rojo is connected to the correct project root.
+- **Data conversion reports existing files:** Use a new output folder, or use `--force` only when you intend to replace generated files.
+
+## Credits and Copyright
+
+This is an independent fan-made programming project. **Bad Apple!!** and its original audiovisual content belong to their respective rights holders. This project is not affiliated with or endorsed by the original creators.
+
+Please make sure you have the necessary rights before redistributing the original video or extracted frame data. The source video is not included; provide your own copy if you want to regenerate the frame data.
+
+---
+
+Made as a Roblox programming project. 🍎
